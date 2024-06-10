@@ -7,7 +7,7 @@ function Header() {
         <img className="w-28 h-24" src={NplLogo} alt="" />
       </div>
       <div>
-        <h1 className=" font-medium text-3xl">TIME TRACABILITY LAB</h1>
+        <h1 className=" font-medium text-3xl">#ABHA IS SO COOL 😎</h1>
       </div>
     </div>
   );
