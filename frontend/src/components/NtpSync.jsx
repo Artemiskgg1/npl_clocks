@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import "tailwindcss/tailwind.css"; // Ensure Tailwind CSS is imported
 
 const NtpSync = () => {
   const [server, setServer] = useState("");
@@ -25,92 +26,99 @@ const NtpSync = () => {
       },
       body: JSON.stringify({ server, sync_time: syncTime, bias }),
     });
-    fetchLogs(); // Fetch logs again after syncing
+    fetchLogs();
   };
 
   return (
-    <div>
-      <form onSubmit={handleSubmit}>
+    <div className="p-4 bg-gray-100 min-h-screen">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 bg-white p-6 rounded shadow-md"
+      >
         <div>
-          <label>Server:</label>
+          <label className="block text-gray-700 font-medium">Server:</label>
           <input
             type="text"
             value={server}
             onChange={(e) => setServer(e.target.value)}
+            className="mt-1 p-2 border border-gray-300 rounded w-full"
           />
         </div>
         <div>
-          <label>Sync Time (minutes):</label>
+          <label className="block text-gray-700 font-medium">
+            Sync Time (minutes):
+          </label>
           <input
             type="text"
             value={syncTime}
             onChange={(e) => setSyncTime(e.target.value)}
+            className="mt-1 p-2 border border-gray-300 rounded w-full"
           />
         </div>
         <div>
-          <label>Bias (seconds):</label>
+          <label className="block text-gray-700 font-medium">
+            Bias (seconds):
+          </label>
           <input
             type="text"
             value={bias}
             onChange={(e) => setBias(e.target.value)}
+            className="mt-1 p-2 border border-gray-300 rounded w-full"
           />
         </div>
-        <button type="submit">Sync</button>
+        <button
+          type="submit"
+          className="bg-blue-500 text-white p-2 rounded shadow"
+        >
+          Sync
+        </button>
       </form>
-      <table>
-        <thead>
-          <tr>
-            <th>NTD</th>
-            <th>Static IP Addresses</th>
-            <th>NTD Locations at CSIR - NPL</th>
-            <th>LED Screen Size in Pixels</th>
-            <th>Timestamp</th>
-            <th>Sync Time</th>
-            <th>Status</th>
-            <th>Bias</th>
-          </tr>
-        </thead>
-        <tbody>
-          {logEntries.map((entry, index) => (
-            <tr key={index}>
-              <td>{`NTD ${index + 1}`}</td>
-              <td>{entry.ip}</td>
-              <td>{locations[index]}</td>
-              <td>{sizes[index]}</td>
-              <td>{entry.timestamp}</td>
-              <td>{entry.log_time}</td>
-              <td>{entry.status}</td>
-              <td>{entry.bias}</td>
+      <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-screen">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                NTD
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Static IP Addresses
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Timestamp
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Sync Time
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Bias
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {logEntries.map((entry, index) => (
+              <tr key={index}>
+                <td className="px-6 py-4 whitespace-nowrap">{`NTD ${
+                  index + 1
+                }`}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{entry.ip}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {entry.timestamp}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {entry.log_time}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">{entry.status}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{entry.bias}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
-
-const locations = [
-  "Main Gate (Outside)",
-  "Main Gate (Inside)",
-  "Conference Room (Metrology Building)",
-  "Outside Head IST Room",
-  "Library",
-  "Electrical Section",
-  "TEC Building",
-  "Inside Auditorium",
-  "Reception of Auditorium",
-];
-
-const sizes = [
-  "192*96",
-  "192*96",
-  "192*64",
-  "192*64",
-  "192*64",
-  "192*64",
-  "192*128",
-  "192*128",
-  "192*128",
-];
 
 export default NtpSync;

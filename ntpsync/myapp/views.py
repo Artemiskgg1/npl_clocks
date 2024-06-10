@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from .models import LogEntry
 from django.views.decorators.csrf import csrf_exempt
 import threading
 import socket
@@ -6,7 +7,7 @@ import datetime
 import struct
 import time
 import json
-
+from django.utils import timezone 
 NTD_IP = [
     "172.16.26.3", "172.16.26.4", "172.16.26.7", "172.16.26.9",
     "172.17.26.10", "172.16.26.11", "172.16.26.12", "172.16.26.13",
@@ -162,25 +163,30 @@ def ntp_to_system_time(timestamp):
 def system_to_ntp_time(timestamp):
     return timestamp + NTP.NTP_DELTA
 
-def send_time(host, data, server, bias, log_file, timestamp):
+def send_time(host, data, server, bias, timestamp):
     host_ip, server_port = host, 10000
     tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    log_entry = LogEntry(
+        timestamp=datetime.datetime.now(),
+        log_time=time.ctime(timestamp - bias),
+        ip=host,
+        status="Not Connected",
+        bias=bias
+    )
 
     try:
         tcp_client.connect((host_ip, server_port))
         tcp_client.sendall(data)
         received = tcp_client.recv(1024)
-        log_file.write(str(datetime.datetime.now()) + "," + time.ctime(timestamp - bias) + "," + host + ",Synchronized" + "," + str(bias) + "\r\n")
+        log_entry.status = "Synchronized"
     except Exception as e:
-        log_file.write(str(datetime.datetime.now()) + "," + time.ctime(timestamp - bias) + ","  + host + ",Not Connected" + "," + str(bias) + "\r\n")
+        log_entry.status = "Not Connected"
     finally:
         tcp_client.close()
-
+        log_entry.save()
 
 @csrf_exempt
 def sync_ntd(request):
-    global log_file  # Declare the file path as global
-
     if request.method == 'POST':
         data = json.loads(request.body)
         ntp_server_name = data['server']
@@ -189,7 +195,6 @@ def sync_ntd(request):
 
         call = NTPClient()
         response = call.request(ntp_server_name, version=3)
-        global timestamp
         timestamp = round(response.tx_time + bias)
 
         ntp_date = datetime.datetime.fromtimestamp(timestamp)
@@ -199,11 +204,17 @@ def sync_ntd(request):
         reserved = b'\x00\x00\x00\x00'
         payload = header + year_month_day + hour_minute_second + reserved
 
-        # Open the log file in 'append' mode
-        with open(log_file, "a") as log_file:
-            for host in NTD_IP:
-                threading.Thread(target=send_time, args=(host, payload, ntp_server_name, bias, log_file, timestamp)).start()
+        for host in NTD_IP:
+            threading.Thread(target=send_time, args=(host, payload, ntp_server_name, bias, timestamp)).start()
 
         return JsonResponse({"status": "success", "server": ntp_server_name, "sync_time": sync_time, "bias": bias, "timestamp": timestamp})
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def get_logs(request):
+    if request.method == 'GET':
+        log_entries = LogEntry.objects.all().values('timestamp', 'log_time', 'ip', 'status', 'bias')
+        return JsonResponse({"log_entries": list(log_entries)})
     else:
         return JsonResponse({"error": "Invalid request method"}, status=400)
