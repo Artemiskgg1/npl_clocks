@@ -28,53 +28,67 @@ const LiveTime = () => {
 const Form = ({
   server,
   setServer,
-  syncTime,
+  syncTime: initialSyncTime,
   setSyncTime,
-  bias,
+  bias: initialBias,
   setBias,
   handleSubmit,
-}) => (
-  <form
-    onSubmit={handleSubmit}
-    className="space-y-4 bg-white p-6 rounded shadow-md mt-6 m-5"
-  >
-    <div>
-      <label className="block text-gray-700 font-medium">Server:</label>
-      <input
-        type="text"
-        value={server}
-        onChange={(e) => setServer(e.target.value)}
-        className="mt-1 p-2 border border-gray-300 rounded w-full"
-      />
-    </div>
-    <div>
-      <label className="block text-gray-700 font-medium">
-        Sync Time (minutes):
-      </label>
-      <input
-        type="text"
-        value={syncTime}
-        onChange={(e) => setSyncTime(e.target.value)}
-        className="mt-1 p-2 border border-gray-300 rounded w-full"
-      />
-    </div>
-    <div>
-      <label className="block text-gray-700 font-medium">Bias (seconds):</label>
-      <input
-        type="text"
-        value={bias}
-        onChange={(e) => setBias(e.target.value)}
-        className="mt-1 p-2 border border-gray-300 rounded w-full"
-      />
-    </div>
-    <button type="submit" className="bg-blue-500 text-white p-2 rounded shadow">
-      Sync
-    </button>
-  </form>
-);
+}) => {
+  // Initialize syncTime and bias states with default values
+  const [syncTime, setInitialSyncTime] = useState(initialSyncTime || "60");
+  const [bias, setInitialBias] = useState(initialBias || "1");
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded shadow-md mt-6 m-5"
+    >
+      <div>
+        <label className="block text-gray-700 font-medium">Server:</label>
+        <select
+          value={server}
+          onChange={(e) => setServer(e.target.value)}
+          className="mt-1 p-2 border border-gray-300 rounded w-full"
+        >
+          <option value="">Select a server</option>
+          <option value="time.google.com">time.google.com</option>
+          <option value="time.nplindia.com">time.nplindia.com</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-gray-700 font-medium">
+          Sync Time (minutes):
+        </label>
+        <input
+          type="text"
+          value={syncTime}
+          onChange={(e) => setSyncTime(e.target.value)}
+          className="mt-1 p-2 border border-gray-300 rounded w-full"
+        />
+      </div>
+      <div>
+        <label className="block text-gray-700 font-medium">
+          Bias (seconds):
+        </label>
+        <input
+          type="text"
+          value={bias}
+          onChange={(e) => setBias(e.target.value)}
+          className="mt-1 p-2 border border-gray-300 rounded w-full"
+        />
+      </div>
+      <button
+        type="submit"
+        className="bg-blue-500 text-white p-2 rounded shadow"
+      >
+        Sync
+      </button>
+    </form>
+  );
+};
 
 const LogsTable = ({ logEntries }) => (
-  <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-screen">
+  <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-[70vh]">
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-50 sticky top-0">
         <tr>
@@ -149,7 +163,7 @@ const NtpSync = () => {
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen flex flex-col md:flex-row">
+    <div className="p-4 bg-zinc-200 min-h-screen flex flex-col md:flex-row">
       <div className="md:w-1/3 w-full flex flex-col">
         <Form
           server={server}
