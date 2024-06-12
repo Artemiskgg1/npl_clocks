@@ -28,16 +28,12 @@ const LiveTime = () => {
 const Form = ({
   server,
   setServer,
-  syncTime: initialSyncTime,
+  syncTime,
   setSyncTime,
-  bias: initialBias,
+  bias,
   setBias,
   handleSubmit,
 }) => {
-  // Initialize syncTime and bias states with default values
-  const [syncTime, setInitialSyncTime] = useState(initialSyncTime || "60");
-  const [bias, setInitialBias] = useState(initialBias || "1");
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -45,15 +41,12 @@ const Form = ({
     >
       <div>
         <label className="block text-gray-700 font-medium">Server:</label>
-        <select
+        <input
+          type="text"
           value={server}
           onChange={(e) => setServer(e.target.value)}
           className="mt-1 p-2 border border-gray-300 rounded w-full"
-        >
-          <option value="">Select a server</option>
-          <option value="time.google.com">time.google.com</option>
-          <option value="time.nplindia.com">time.nplindia.com</option>
-        </select>
+        />
       </div>
       <div>
         <label className="block text-gray-700 font-medium">
@@ -87,58 +80,52 @@ const Form = ({
   );
 };
 
-const LogsTable = ({ logEntries }) => {
-  const sortedLogEntries = [...logEntries].sort(
-    (a, b) => new Date(b.log_time) - new Date(a.log_time)
-  );
-
-  return (
-    <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-[70vh]">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50 sticky top-0">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              NTD
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Static IP Addresses
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Sync Time
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
+const LogsTable = ({ logEntries }) => (
+  <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-[70vh]">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50 sticky top-0">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            NTD
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Static IP Addresses
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Sync Time
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {logEntries.map((entry, index) => (
+          <tr key={index}>
+            <td className="px-6 py-4 whitespace-nowrap">{`NTD ${
+              index + 1
+            }`}</td>
+            <td className="px-6 py-4 whitespace-nowrap">{entry.ip}</td>
+            <td className="px-6 py-4 whitespace-nowrap">{entry.timestamp}</td>
+            <td
+              className={`px-6 py-4 whitespace-nowrap ${
+                entry.status === "Synchronized"
+                  ? "bg-green-600"
+                  : entry.status === "not synchronized"
+                  ? "text-red-600"
+                  : entry.status === "Not Connected"
+                  ? "bg-yellow-400"
+                  : ""
+              }`}
+            >
+              {entry.status}
+            </td>
           </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {sortedLogEntries.map((entry, index) => (
-            <tr key={index}>
-              <td className="px-6 py-4 whitespace-nowrap">{`NTD ${
-                logEntries.length - index
-              }`}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{entry.ip}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{entry.log_time}</td>
-              <td
-                className={`px-6 py-4 whitespace-nowrap ${
-                  entry.status === "Synchronized"
-                    ? "bg-green-600"
-                    : entry.status === "not synchronized"
-                    ? "text-red-600"
-                    : entry.status === "Not Connected"
-                    ? "bg-yellow-400"
-                    : ""
-                }`}
-              >
-                {entry.status}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 const NtpSync = () => {
   const [server, setServer] = useState("");

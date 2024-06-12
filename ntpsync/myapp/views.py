@@ -1,21 +1,22 @@
 from django.http import JsonResponse
-from .models import LogEntry
 from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render
 import threading
 import socket
 import datetime
 import struct
 import time
-import json
-from django.utils import timezone 
+from myapp.models import LogEntry
 
 NTD_IP = [
-     "172.16.26.11", "172.16.26.12", "172.16.26.13",
+    "172.16.26.11", "172.16.26.12", "172.16.26.13",
     "172.16.26.3", "172.16.26.4", "172.16.26.7", "172.16.26.9",
     "172.16.26.14", "172.16.26.15", "172.17.26.16", "172.17.26.17"
 ]
-    # "172.16.26.10",
 
+log_file = "other_log.csv"
+global timestamp
+bias = 0
 
 class NTPException(Exception):
     pass
@@ -77,8 +78,8 @@ class NTPPacket:
         self.stratum = unpacked[1]
         self.poll = unpacked[2]
         self.precision = unpacked[3]
-        self.root_delay = float(unpacked[4])/2**16
-        self.root_dispersion = float(unpacked[5])/2**16
+        self.root_delay = float(unpacked[4]) / 2**16
+        self.root_dispersion = float(unpacked[5]) / 2**16
         self.ref_id = unpacked[6]
         self.ref_timestamp = _to_time(unpacked[7], unpacked[8])
         self.orig_timestamp = _to_time(unpacked[9], unpacked[10])
@@ -134,14 +135,15 @@ class NTPClient:
             query_packet = NTPPacket(mode=3, version=version,
                                 tx_timestamp=system_to_ntp_time(time.time()))
             s.sendto(query_packet.to_data(), sockaddr)
-            src_addr = None,
+            src_addr = None
             while src_addr[0] != sockaddr[0]:
-                response_packet, src_addr = s.recvfrom(256)
+                response_packet, src_addr = s.recvfrom(1024)
             dest_timestamp = system_to_ntp_time(time.time())
         except socket.timeout:
             raise NTPException("No response received from %s." % host)
         finally:
             s.close()
+
         stats = NTPStats()
         stats.from_data(response_packet)
         stats.dest_timestamp = dest_timestamp
@@ -163,60 +165,60 @@ def ntp_to_system_time(timestamp):
 def system_to_ntp_time(timestamp):
     return timestamp + NTP.NTP_DELTA
 
-def send_time(host, data, server, bias, timestamp):
+def send_time(host, data, timestamp, bias):
     host_ip, server_port = host, 10000
     tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    log_entry = LogEntry(
-        timestamp=datetime.datetime.now(),
-        log_time=time.ctime(timestamp - bias),
-        ip=host,
-        status="Not Connected",
-        bias=bias
-    )
 
     try:
         tcp_client.connect((host_ip, server_port))
         tcp_client.sendall(data)
         received = tcp_client.recv(1024)
-        log_entry.status = "Synchronized"
+        log_entry = LogEntry(timestamp=datetime.datetime.now(), host=host, status="Synchronized", bias=bias)
+        log_entry.save()
     except Exception as e:
-        log_entry.status = "Not Connected"
+        log_entry = LogEntry(timestamp=datetime.datetime.now(), host=host, status="Not Connected", bias=bias)
+        log_entry.save()
     finally:
         tcp_client.close()
-        log_entry.save()
+
+def sync_ntd(server, hosts):
+    global timestamp, bias
+    client = NTPClient()
+    response = client.request(server, version=3)
+    timestamp = round(response.tx_time + bias)
+
+    ntp_date = datetime.datetime.fromtimestamp(timestamp)
+
+    header = b'\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00\x00\x00\x00\x00\x00\x00'
+    footer = b'\x00\x00\x0d\x0a'
+    year1 = bytes([ntp_date.year // 256])
+    year2 = bytes([ntp_date.year % 256])
+    data = header + year2 + year1 + bytes([ntp_date.month]) + bytes([ntp_date.day]) + bytes([ntp_date.hour]) + bytes([ntp_date.minute]) + bytes([ntp_date.second]) + footer
+
+    for host in hosts:
+        threading.Thread(target=send_time, args=(host, data, timestamp, bias)).start()
 
 @csrf_exempt
-def sync_ntd(request):
+def start_sync(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        ntp_server_name = data['server']
-        sync_time = 60 * int(data['sync_time'])
-        bias = int(data['bias'])
+        server = request.POST.get('server')
+        sync_time = int(request.POST.get('sync_time')) * 60
+        global bias
+        bias = int(request.POST.get('bias'))
 
-        call = NTPClient()
-        response = call.request(ntp_server_name, version=3)
-        timestamp = round(response.tx_time + bias)
+        def loop():
+            while True:
+                sync_ntd(server, NTD_IP)
+                time.sleep(sync_time)
 
-        ntp_date = datetime.datetime.fromtimestamp(timestamp)
-        header = b'\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00\x00\x00\x00\x00\x00\x00'
-        footer = b'\x00\x00\x0d\x0a'
+        threading.Thread(target=loop).start()
 
-        year1 = bytes([ntp_date.year // 256])
-        year2 = bytes([ntp_date.year % 256])
-        
-        data = header + year2 + year1 + bytes([ntp_date.month]) + bytes([ntp_date.day]) + bytes([ntp_date.hour]) + bytes([ntp_date.minute]) + bytes([ntp_date.second]) + footer
+        return JsonResponse({'status': 'Synchronization started'})
 
-        for host in NTD_IP:
-            threading.Thread(target=send_time, args=(host, data, ntp_server_name, bias, timestamp)).start()
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-        return JsonResponse({"status": "success", "server": ntp_server_name, "sync_time": sync_time, "bias": bias, "timestamp": timestamp})
-    else:
-        return JsonResponse({"error": "Invalid request method"}, status=400)
-
-@csrf_exempt
 def get_logs(request):
-    if request.method == 'GET':
-        log_entries = LogEntry.objects.all().values('timestamp', 'log_time', 'ip', 'status', 'bias')
-        return JsonResponse({"log_entries": list(log_entries)})
-    else:
-        return JsonResponse({"error": "Invalid request method"}, status=400)
+    logs = LogEntry.objects.all()
+    log_list = [{'timestamp': log.timestamp, 'ip': log.ip, 'status': log.status, 'bias': log.bias} for log in logs]
+    return JsonResponse({'log_entries': log_list})
+
