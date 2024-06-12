@@ -1,13 +1,16 @@
 import React from "react";
 import NplLogo from "../assets/csir-npl.png";
+
 function Header() {
   return (
-    <div className="flex items-center justify-center m-2">
-      <div className="">
-        <img className="w-28 h-24" src={NplLogo} alt="" />
+    <div className="sticky top-0 bg-white z-50 flex items-center justify-center shadow-md">
+      <div>
+        <img className="w-28 h-24" src={NplLogo} alt="CSIR NPL Logo" />
       </div>
       <div>
-        <h1 className=" font-medium text-3xl">#ABHA IS SO COOL 😎</h1>
+        <h1 className="font-medium text-3xl">
+          NATIONAL PHYSICAL LABORATORY (CSIR - NPL)
+        </h1>
       </div>
     </div>
   );

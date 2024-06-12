@@ -8,14 +8,12 @@ import struct
 import time
 import json
 from django.utils import timezone 
+
 NTD_IP = [
     "172.16.26.3", "172.16.26.4", "172.16.26.7", "172.16.26.9",
     "172.17.26.10", "172.16.26.11", "172.16.26.12", "172.16.26.13",
     "172.16.26.14", "172.16.26.15", "172.17.26.16", "172.17.26.17"
 ]
-
-log_file = "other_log.csv"
-timestamp = 0
 
 class NTPException(Exception):
     pass
@@ -198,14 +196,16 @@ def sync_ntd(request):
         timestamp = round(response.tx_time + bias)
 
         ntp_date = datetime.datetime.fromtimestamp(timestamp)
-        header = b'\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00'
-        year_month_day = (ntp_date.year).to_bytes(2, byteorder="big") + (ntp_date.month).to_bytes(1, byteorder="big") + (ntp_date.day).to_bytes(1, byteorder="big")
-        hour_minute_second = (ntp_date.hour).to_bytes(1, byteorder="big") + (ntp_date.minute).to_bytes(1, byteorder="big") + (ntp_date.second).to_bytes(1, byteorder="big")
-        reserved = b'\x00\x00\x00\x00'
-        payload = header + year_month_day + hour_minute_second + reserved
+        header = b'\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00\x00\x00\x00\x00\x00\x00'
+        footer = b'\x00\x00\x0d\x0a'
+
+        year1 = bytes([ntp_date.year // 256])
+        year2 = bytes([ntp_date.year % 256])
+        
+        data = header + year2 + year1 + bytes([ntp_date.month]) + bytes([ntp_date.day]) + bytes([ntp_date.hour]) + bytes([ntp_date.minute]) + bytes([ntp_date.second]) + footer
 
         for host in NTD_IP:
-            threading.Thread(target=send_time, args=(host, payload, ntp_server_name, bias, timestamp)).start()
+            threading.Thread(target=send_time, args=(host, data, ntp_server_name, bias, timestamp)).start()
 
         return JsonResponse({"status": "success", "server": ntp_server_name, "sync_time": sync_time, "bias": bias, "timestamp": timestamp})
     else:
