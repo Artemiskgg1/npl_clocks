@@ -84,18 +84,18 @@ const LogsTable = ({ logEntries }) => (
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Static IP Addresses
           </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Timestamp
-          </th>
+          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> */}
+          {/* Timestamp */}
+          {/* </th> */}
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Sync Time
           </th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Status
           </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Bias
-          </th>
+          </th> */}
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
@@ -105,10 +105,10 @@ const LogsTable = ({ logEntries }) => (
               index + 1
             }`}</td>
             <td className="px-6 py-4 whitespace-nowrap">{entry.ip}</td>
-            <td className="px-6 py-4 whitespace-nowrap">{entry.timestamp}</td>
+            {/* <td className="px-6 py-4 whitespace-nowrap">{entry.timestamp}</td> */}
             <td className="px-6 py-4 whitespace-nowrap">{entry.log_time}</td>
             <td className="px-6 py-4 whitespace-nowrap">{entry.status}</td>
-            <td className="px-6 py-4 whitespace-nowrap">{entry.bias}</td>
+            {/* <td className="px-6 py-4 whitespace-nowrap">{entry.bias}</td> */}
           </tr>
         ))}
       </tbody>
