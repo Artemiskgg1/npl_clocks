@@ -18,7 +18,7 @@ const LiveTime = () => {
   }, []);
 
   return (
-    <div className="p-4 bg-white rounded shadow-md">
+    <div className="p-4 m-5 bg-white rounded shadow-md mt-4 md:mt-0">
       <h2 className="text-xl font-bold text-gray-700">Live Time</h2>
       <p className="text-2xl text-gray-900 mt-2">{time}</p>
     </div>
@@ -36,7 +36,7 @@ const Form = ({
 }) => (
   <form
     onSubmit={handleSubmit}
-    className="space-y-4 bg-white p-6 rounded shadow-md"
+    className="space-y-4 bg-white p-6 rounded shadow-md mt-6 m-5"
   >
     <div>
       <label className="block text-gray-700 font-medium">Server:</label>
@@ -76,7 +76,7 @@ const Form = ({
 const LogsTable = ({ logEntries }) => (
   <div className="mt-6 overflow-auto bg-white rounded shadow-md max-h-screen">
     <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
+      <thead className="bg-gray-50 sticky top-0">
         <tr>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             NTD
@@ -84,18 +84,12 @@ const LogsTable = ({ logEntries }) => (
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Static IP Addresses
           </th>
-          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"> */}
-          {/* Timestamp */}
-          {/* </th> */}
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Sync Time
           </th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Status
           </th>
-          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Bias
-          </th> */}
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
@@ -105,10 +99,20 @@ const LogsTable = ({ logEntries }) => (
               index + 1
             }`}</td>
             <td className="px-6 py-4 whitespace-nowrap">{entry.ip}</td>
-            {/* <td className="px-6 py-4 whitespace-nowrap">{entry.timestamp}</td> */}
             <td className="px-6 py-4 whitespace-nowrap">{entry.log_time}</td>
-            <td className="px-6 py-4 whitespace-nowrap">{entry.status}</td>
-            {/* <td className="px-6 py-4 whitespace-nowrap">{entry.bias}</td> */}
+            <td
+              className={`px-6 py-4 whitespace-nowrap ${
+                entry.status === "Synchronized"
+                  ? "bg-green-600"
+                  : entry.status === "not synchronized"
+                  ? "text-red-600"
+                  : entry.status === "Not Connected"
+                  ? "bg-yellow-400"
+                  : ""
+              }`}
+            >
+              {entry.status}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -145,24 +149,22 @@ const NtpSync = () => {
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
-      <div className="flex flex-col md:flex-row mb-6">
-        <div className="md:w-2/3 w-full mb-4 md:mb-0 md:mr-4">
-          <Form
-            server={server}
-            setServer={setServer}
-            syncTime={syncTime}
-            setSyncTime={setSyncTime}
-            bias={bias}
-            setBias={setBias}
-            handleSubmit={handleSubmit}
-          />
-        </div>
-        <div className="md:w-1/3 w-full">
-          <LiveTime />
-        </div>
+    <div className="p-4 bg-gray-100 min-h-screen flex flex-col md:flex-row">
+      <div className="md:w-1/3 w-full flex flex-col">
+        <Form
+          server={server}
+          setServer={setServer}
+          syncTime={syncTime}
+          setSyncTime={setSyncTime}
+          bias={bias}
+          setBias={setBias}
+          handleSubmit={handleSubmit}
+        />
+        <LiveTime />
       </div>
-      <LogsTable logEntries={logEntries} />
+      <div className="md:w-2/3 w-full">
+        <LogsTable logEntries={logEntries} />
+      </div>
     </div>
   );
 };
