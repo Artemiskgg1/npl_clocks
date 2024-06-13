@@ -134,9 +134,18 @@ const NtpSync = () => {
   const [logEntries, setLogEntries] = useState([]);
 
   const fetchLogs = async () => {
-    const response = await fetch("http://localhost:8000/logs/");
-    const data = await response.json();
-    setLogEntries(data.log_entries || []);
+    try {
+      const response = await fetch("http://localhost:8000/logs/");
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      console.log("Fetched logs:", data); // Check the fetched data
+      setLogEntries(data.log_entries || []);
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+      // Handle error state or retry logic here
+    }
   };
 
   useEffect(() => {

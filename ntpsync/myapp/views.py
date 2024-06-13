@@ -10,19 +10,21 @@ from myapp.models import LogEntry
 
 NTD_IP = [
     "172.16.26.10",
-    # Add more IPs if necessary
 ]
 
 global timestamp
 bias = 0
 
+
 class NTPException(Exception):
     pass
+
 
 class NTP:
     _SYSTEM_EPOCH = datetime.date(*time.gmtime(0)[0:3])
     _NTP_EPOCH = datetime.date(1900, 1, 1)
     NTP_DELTA = (_SYSTEM_EPOCH - _NTP_EPOCH).days * 24 * 3600
+
 
 class NTPPacket:
     _PACKET_FORMAT = "!B B B b 11I"
@@ -44,13 +46,15 @@ class NTPPacket:
 
     def to_data(self):
         try:
-            packed = struct.pack(NTPPacket._PACKET_FORMAT,
+            packed = struct.pack(
+                NTPPacket._PACKET_FORMAT,
                 (self.leap << 6 | self.version << 3 | self.mode),
                 self.stratum,
                 self.poll,
                 self.precision,
                 _to_int(self.root_delay) << 16 | _to_frac(self.root_delay, 16),
-                _to_int(self.root_dispersion) << 16 | _to_frac(self.root_dispersion, 16),
+                _to_int(self.root_dispersion) << 16
+                | _to_frac(self.root_dispersion, 16),
                 self.ref_id,
                 _to_int(self.ref_timestamp),
                 _to_frac(self.ref_timestamp),
@@ -59,15 +63,18 @@ class NTPPacket:
                 _to_int(self.recv_timestamp),
                 _to_frac(self.recv_timestamp),
                 _to_int(self.tx_timestamp),
-                _to_frac(self.tx_timestamp))
+                _to_frac(self.tx_timestamp),
+            )
         except struct.error:
             raise NTPException("Invalid NTP packet fields.")
         return packed
 
     def from_data(self, data):
         try:
-            unpacked = struct.unpack(NTPPacket._PACKET_FORMAT,
-                    data[0:struct.calcsize(NTPPacket._PACKET_FORMAT)])
+            unpacked = struct.unpack(
+                NTPPacket._PACKET_FORMAT,
+                data[0 : struct.calcsize(NTPPacket._PACKET_FORMAT)],
+            )
         except struct.error:
             raise NTPException("Invalid NTP packet.")
         self.leap = unpacked[0] >> 6 & 0x3
@@ -84,6 +91,7 @@ class NTPPacket:
         self.recv_timestamp = _to_time(unpacked[11], unpacked[12])
         self.tx_timestamp = _to_time(unpacked[13], unpacked[14])
 
+
 class NTPStats(NTPPacket):
     def __init__(self):
         NTPPacket.__init__(self)
@@ -91,13 +99,16 @@ class NTPStats(NTPPacket):
 
     @property
     def offset(self):
-        return ((self.recv_timestamp - self.orig_timestamp) +
-                (self.tx_timestamp - self.dest_timestamp)) / 2
+        return (
+            (self.recv_timestamp - self.orig_timestamp)
+            + (self.tx_timestamp - self.dest_timestamp)
+        ) / 2
 
     @property
     def delay(self):
-        return ((self.dest_timestamp - self.orig_timestamp) -
-                (self.tx_timestamp - self.recv_timestamp))
+        return (self.dest_timestamp - self.orig_timestamp) - (
+            self.tx_timestamp - self.recv_timestamp
+        )
 
     @property
     def tx_time(self):
@@ -119,26 +130,39 @@ class NTPStats(NTPPacket):
     def dest_time(self):
         return ntp_to_system_time(self.dest_timestamp)
 
+
 class NTPClient:
     def __init__(self):
         pass
 
-    def request(self, host, version=2, port='ntp', timeout=5):
+    def request(self, host, version=2, port=123, timeout=5):
         addrinfo = socket.getaddrinfo(host, port)[0]
         family, sockaddr = addrinfo[0], addrinfo[4]
         s = socket.socket(family, socket.SOCK_DGRAM)
+        s.settimeout(timeout)
 
         try:
-            s.settimeout(timeout)
-            query_packet = NTPPacket(mode=3, version=version,
-                                tx_timestamp=system_to_ntp_time(time.time()))
-            s.sendto(query_packet.to_data(), sockaddr)
-            src_addr = None
+            packet = NTPPacket(version=version)
+            data = packet.to_data()
+            dest_timestamp = time.time() + NTP.NTP_DELTA
+            s.sendto(data, sockaddr)
+
+            response_packet, src_addr = s.recvfrom(1024)
+            if src_addr is None:
+                raise NTPException("No valid source address received.")
             while src_addr[0] != sockaddr[0]:
                 response_packet, src_addr = s.recvfrom(1024)
-            dest_timestamp = system_to_ntp_time(time.time())
         except socket.timeout:
-            raise NTPException("No response received from %s." % host)
+            raise NTPException(f"No response received from {host}.")
+        except socket.error as se:
+            if isinstance(se.args, tuple) and se.args[0] == 10022:
+                raise NTPException(f"WinError 10022: An invalid argument was supplied.")
+            else:
+                raise NTPException(f"Socket error: {se}")
+        except TypeError as te:
+            raise NTPException(f"Error processing source address: {te}")
+        except Exception as e:
+            raise NTPException(f"Unexpected error receiving NTP response: {e}")
         finally:
             s.close()
 
@@ -148,20 +172,26 @@ class NTPClient:
 
         return stats
 
+
 def _to_int(timestamp):
     return int(timestamp)
+
 
 def _to_frac(timestamp, n=32):
     return int(abs(timestamp - _to_int(timestamp)) * 2**n)
 
+
 def _to_time(integ, frac, n=32):
     return integ + float(frac) / 2**n
+
 
 def ntp_to_system_time(timestamp):
     return timestamp - NTP.NTP_DELTA
 
+
 def system_to_ntp_time(timestamp):
     return timestamp + NTP.NTP_DELTA
+
 
 def send_time(host, data, timestamp, bias):
     host_ip, server_port = host, 10000
@@ -171,55 +201,107 @@ def send_time(host, data, timestamp, bias):
         tcp_client.connect((host_ip, server_port))
         tcp_client.sendall(data)
         received = tcp_client.recv(1024)
-        log_entry = LogEntry(timestamp=datetime.datetime.now(), host=host, status="Synchronized", bias=bias)
+        log_entry = LogEntry(
+            timestamp=datetime.datetime.now(),
+            host=host,
+            status="Synchronized",
+            bias=bias,
+        )
         log_entry.save()
     except Exception as e:
-        log_entry = LogEntry(timestamp=datetime.datetime.now(), host=host, status="Not Connected", bias=bias)
+        log_entry = LogEntry(
+            timestamp=datetime.datetime.now(),
+            host=host,
+            status="Not Connected",
+            bias=bias,
+        )
         log_entry.save()
     finally:
         tcp_client.close()
 
+
+@csrf_exempt
+def start_sync(request):
+    if request.method == "POST":
+        data = json.loads(request.body.decode("utf-8"))
+        server = data.get("server")
+        sync_time = int(data.get("sync_time")) * 60
+        global bias
+        bias = int(data.get("bias"))
+        hosts = NTD_IP
+        print
+
+        def loop(server, hosts):
+            while True:
+                try:
+                    sync_ntd(server, hosts)
+                    time.sleep(sync_time)
+                except Exception as e:
+                    print(f"Error in sync_ntd: {e}")
+                    time.sleep(sync_time)
+
+        threading.Thread(target=loop, args=(server, hosts)).start()
+
+        return JsonResponse({"status": "Synchronization started"})
+
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+
 @csrf_exempt
 def sync_ntd(server, hosts):
     global timestamp, bias
+    print("server: ", server)
+    print("hosts: ", hosts)
+    if hosts is None:
+        print("No hosts provided.")
+        return
+    print(f"Syncing NTDs with {server}...")
     client = NTPClient()
-    response = client.request(server, version=3)
+    try:
+        response = client.request(server, version=3)
+        print(f"Response: {response}")
+    except NTPException as e:
+        print(f"NTPException: {e}")
+        return  # Exit function on exception
+
     timestamp = round(response.tx_time + bias)
 
     ntp_date = datetime.datetime.fromtimestamp(timestamp)
 
-    header = b'\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00\x00\x00\x00\x00\x00\x00'
-    footer = b'\x00\x00\x0d\x0a'
+    header = b"\x55\xaa\x00\x00\x01\x01\x00\xc1\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x0f\x00\x10\x00\x00\x00\x00\x00\x00\x00"
+    footer = b"\x00\x00\x0d\x0a"
     year1 = bytes([ntp_date.year // 256])
     year2 = bytes([ntp_date.year % 256])
-    data = header + year2 + year1 + bytes([ntp_date.month]) + bytes([ntp_date.day]) + bytes([ntp_date.hour]) + bytes([ntp_date.minute]) + bytes([ntp_date.second]) + footer
+    data = (
+        header
+        + year2
+        + year1
+        + bytes([ntp_date.month])
+        + bytes([ntp_date.day])
+        + bytes([ntp_date.hour])
+        + bytes([ntp_date.minute])
+        + bytes([ntp_date.second])
+        + footer
+    )
 
     for host in hosts:
-        threading.Thread(target=send_time, args=(host, data, timestamp, bias)).start()
-
-@csrf_exempt
-def start_sync(request):
-    if request.method == 'POST':
-        data = json.loads(request.body.decode('utf-8'))
-        server = data.get('server')
-        sync_time = int(data.get('sync_time')) * 60
-        global bias
-        bias = int(data.get('bias'))
-        hosts = NTD_IP
-
-        def loop(server, hosts):
-            while True:
-                sync_ntd(server, hosts)
-                time.sleep(sync_time)
-
-        threading.Thread(target=loop, args=(server, hosts)).start()
-
-        return JsonResponse({'status': 'Synchronization started'})
-
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
+        try:
+            threading.Thread(
+                target=send_time, args=(host, data, timestamp, bias)
+            ).start()
+        except Exception as e:
+            print(f"Error processing host {host}: {e}")
 
 
 def get_logs(request):
     logs = LogEntry.objects.all()
-    log_list = [{'timestamp': log.timestamp, 'ip': log.ip, 'status': log.status, 'bias': log.bias} for log in logs]
-    return JsonResponse({'log_entries': log_list})
+    log_list = [
+        {
+            "timestamp": log.timestamp,
+            "ip": log.ip,
+            "status": log.status,
+            "bias": log.bias,
+        }
+        for log in logs
+    ]
+    return JsonResponse({"log_entries": log_list})
