@@ -1,20 +1,18 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render
 import threading
 import socket
 import datetime
 import struct
 import time
+import json
 from myapp.models import LogEntry
 
 NTD_IP = [
-    "172.16.26.11", "172.16.26.12", "172.16.26.13",
-    "172.16.26.3", "172.16.26.4", "172.16.26.7", "172.16.26.9",
-    "172.16.26.14", "172.16.26.15", "172.17.26.16", "172.17.26.17"
+    "172.16.26.10",
+    # Add more IPs if necessary
 ]
 
-log_file = "other_log.csv"
 global timestamp
 bias = 0
 
@@ -181,6 +179,7 @@ def send_time(host, data, timestamp, bias):
     finally:
         tcp_client.close()
 
+@csrf_exempt
 def sync_ntd(server, hosts):
     global timestamp, bias
     client = NTPClient()
@@ -201,24 +200,26 @@ def sync_ntd(server, hosts):
 @csrf_exempt
 def start_sync(request):
     if request.method == 'POST':
-        server = request.POST.get('server')
-        sync_time = int(request.POST.get('sync_time')) * 60
+        data = json.loads(request.body.decode('utf-8'))
+        server = data.get('server')
+        sync_time = int(data.get('sync_time')) * 60
         global bias
-        bias = int(request.POST.get('bias'))
+        bias = int(data.get('bias'))
+        hosts = NTD_IP
 
-        def loop():
+        def loop(server, hosts):
             while True:
-                sync_ntd(server, NTD_IP)
+                sync_ntd(server, hosts)
                 time.sleep(sync_time)
 
-        threading.Thread(target=loop).start()
+        threading.Thread(target=loop, args=(server, hosts)).start()
 
         return JsonResponse({'status': 'Synchronization started'})
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+
 def get_logs(request):
     logs = LogEntry.objects.all()
     log_list = [{'timestamp': log.timestamp, 'ip': log.ip, 'status': log.status, 'bias': log.bias} for log in logs]
     return JsonResponse({'log_entries': log_list})
-

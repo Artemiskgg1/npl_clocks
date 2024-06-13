@@ -145,15 +145,31 @@ const NtpSync = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const csrfToken = getCookie("csrftoken");
     await fetch("http://localhost:8000/sync/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
       },
       body: JSON.stringify({ server, sync_time: syncTime, bias }),
     });
     fetchLogs();
   };
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
 
   return (
     <div className="p-4 bg-zinc-200 min-h-screen flex flex-col md:flex-row">
