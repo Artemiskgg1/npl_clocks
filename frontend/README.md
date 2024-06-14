@@ -9,8 +9,4 @@ Currently, two official plugins are available:
 
 ## co author
 
-sumit kushwah
-added
-abha
-fhjsjfhj
-sadasdad
+
