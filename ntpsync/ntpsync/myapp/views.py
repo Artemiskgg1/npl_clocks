@@ -203,7 +203,7 @@ def send_time(host, data, timestamp, bias):
         received = tcp_client.recv(1024)
         log_entry = LogEntry(
             timestamp=datetime.datetime.now(),
-            ip=host,
+            host=host,
             status="Synchronized",
             bias=bias,
         )
@@ -211,7 +211,7 @@ def send_time(host, data, timestamp, bias):
     except Exception as e:
         log_entry = LogEntry(
             timestamp=datetime.datetime.now(),
-            ip=host,
+            host=host,
             status="Not Connected",
             bias=bias,
         )
