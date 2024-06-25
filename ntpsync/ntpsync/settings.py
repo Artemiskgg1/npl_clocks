@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-v!08)a#lhy!f$3s53qyx6*%rcbs*2ha-fq+lkfg@z9op1qfl##"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG")
+DEBUG = True
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS_DEPLOY")
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
