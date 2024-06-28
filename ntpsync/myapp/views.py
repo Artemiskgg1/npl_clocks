@@ -9,7 +9,14 @@ import json
 from myapp.models import LogEntry
 
 NTD_IP = [
-    "172.16.26.10",
+    "172.16.26.3",
+    "172.16.26.4",
+    "172.16.26.9",
+    "172.17.26.10",
+    "172.16.26.12",
+    "172.16.26.7",
+    "172.16.26.15",
+    "172.17.26.16",
 ]
 
 global timestamp
@@ -193,8 +200,8 @@ def system_to_ntp_time(timestamp):
     return timestamp + NTP.NTP_DELTA
 
 
-def send_time(host, data, timestamp, bias):
-    host_ip, server_port = host, 10000
+def send_time(ip, data, timestamp, bias):
+    host_ip, server_port = ip, 10000
     tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -203,7 +210,7 @@ def send_time(host, data, timestamp, bias):
         received = tcp_client.recv(1024)
         log_entry = LogEntry(
             timestamp=datetime.datetime.now(),
-            host=host,
+            ip=ip,
             status="Synchronized",
             bias=bias,
         )
@@ -211,7 +218,7 @@ def send_time(host, data, timestamp, bias):
     except Exception as e:
         log_entry = LogEntry(
             timestamp=datetime.datetime.now(),
-            host=host,
+            ip=ip,
             status="Not Connected",
             bias=bias,
         )
@@ -284,13 +291,11 @@ def sync_ntd(server, hosts):
         + footer
     )
 
-    for host in hosts:
+    for ip in hosts:
         try:
-            threading.Thread(
-                target=send_time, args=(host, data, timestamp, bias)
-            ).start()
+            threading.Thread(target=send_time, args=(ip, data, timestamp, bias)).start()
         except Exception as e:
-            print(f"Error processing host {host}: {e}")
+            print(f"Error processing host {ip}: {e}")
 
 
 def get_logs(request):
